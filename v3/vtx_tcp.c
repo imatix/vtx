@@ -1020,26 +1020,31 @@ s_peering_monitor (zloop_t *loop, zmq_pollitem_t *item, void *arg)
     if (driver->verbose)
         zclock_log ("I: (tcp) connecting to '%s'...", peering->address);
     peering->handle = socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (peering->handle == -1)
+    if (peering->handle == -1) {
         zclock_log ("E: connect failed: no sockets - %s", strerror (errno));
-    else {
-        s_set_nonblock (peering->handle);
-        if (s_str_to_sin_addr (&peering->addr, peering->address)) {
-            zclock_log ("E: connect failed: bad address '%s'", peering->address);
-            close (peering->handle);
-            peering->handle = 0;
-        }
+        goto error;
     }
+    s_set_nonblock (peering->handle);
+    if (s_str_to_sin_addr (&peering->addr, peering->address)) {
+        zclock_log ("E: connect failed: bad address '%s'", peering->address);
+        goto error;
+    }
+    int rc = connect (peering->handle,
+        (const struct sockaddr *) &peering->addr, IN_ADDR_SIZE);
+    if (rc == -1 && errno != EINPROGRESS) {
+        zclock_log ("E: connect failed: '%s'", strerror (errno));
+        goto error;
+    }
+    peering_poller (peering, ZMQ_POLLIN + ZMQ_POLLOUT);
+    return 0;
+
+error:
     if (peering->handle > 0) {
-        int rc = connect (peering->handle,
-            (const struct sockaddr *) &peering->addr, IN_ADDR_SIZE);
-        if (rc == 0 || errno == EINPROGRESS)
-            peering_poller (peering, ZMQ_POLLIN + ZMQ_POLLOUT);
-        else
-            zclock_log ("E: connect failed: '%s'", strerror (errno));
+        close (peering->handle);
+        peering->handle = 0;
     }
-    else
-        zloop_timer (loop, peering->interval, 1, s_peering_monitor, peering);
+    //  Try again later
+    zloop_timer (loop, peering->interval, 1, s_peering_monitor, peering);
     return 0;
 }
 
