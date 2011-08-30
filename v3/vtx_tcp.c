@@ -1072,8 +1072,10 @@ s_send_wire (peering_t *self)
                 break;      //  Wait until network can accept more
         }
         else
-        if (bytes_sent == 0 || s_handle_io_error ("send") == -1)
+        if (bytes_sent == 0 || s_handle_io_error ("send") == -1) {
             self->exception = TRUE;
+            break;          //  Signal error and give up
+        }
     }
 }
 
