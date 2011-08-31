@@ -474,6 +474,7 @@ binding_require (vocket_t *vocket, char *address)
         if (self->exception) {
             free (self->address);
             free (self);
+            self = NULL;
         }
         else {
             //  Store new binding in vocket containers
@@ -536,6 +537,7 @@ peering_require (vocket_t *vocket, char *address, Bool outgoing)
         if (self->exception) {
             free (self->address);
             free (self);
+            self = NULL;
         }
         else {
             //  Store new peering in vocket containers
