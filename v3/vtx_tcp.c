@@ -363,6 +363,12 @@ vocket_destroy (vocket_t **self_p)
         vocket_t *self = *self_p;
         driver_t *driver = self->driver;
 
+        if (self->min_peerings == 0) {
+            //  Ask reactor to stop monitoring vocket's msgpipe
+            zmq_pollitem_t item = { self->msgpipe, 0, ZMQ_POLLIN, 0 };
+            zloop_poller_end (driver->loop, &item);
+        }
+
         //  Close message msgpipe socket
         zsocket_destroy (driver->ctx, self->msgpipe);
 
