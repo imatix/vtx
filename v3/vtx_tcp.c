@@ -463,7 +463,9 @@ binding_require (vocket_t *vocket, char *address)
                 self->exception = TRUE;
             }
         }
-        if (!self->exception) {
+        if (self->exception)
+            close (self->handle);
+        else {
             //  Ask reactor to start monitoring this binding handle
             zmq_pollitem_t item = { NULL, self->handle, ZMQ_POLLIN, 0 };
             zloop_poller (driver->loop, &item, s_binding_input, vocket);
@@ -932,8 +934,10 @@ s_binding_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             peering_raise (peering);
             peering_poller (peering, ZMQ_POLLIN + ZMQ_POLLOUT);
         }
-        else
+        else {
             zclock_log ("W: Max peerings reached for socket");
+            close (handle);
+        }
     }
     else
         s_handle_io_error ("accept");
