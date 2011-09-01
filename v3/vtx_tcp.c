@@ -763,7 +763,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         while (rc >= 0) {
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
-            int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
         }
     }
     else
@@ -777,7 +777,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
-            int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
             more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
@@ -791,7 +791,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
-            int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
             more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
@@ -810,7 +810,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
-            int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
             more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
@@ -849,7 +849,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
 
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
-            int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
             more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
@@ -865,7 +865,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 }
                 zmq_msg_close (&msg);
                 zmq_msg_init (&msg);
-                int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+                rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
                 more = zsockopt_rcvmore (vocket->msgpipe);
             }
         }
@@ -876,7 +876,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 s_queue_output (peering, &msg, more);
                 zmq_msg_close (&msg);
                 zmq_msg_init (&msg);
-                int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+                rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
                 more = zsockopt_rcvmore (vocket->msgpipe);
             }
         }
@@ -888,7 +888,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             s_queue_output (peering, &msg, more);
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
-            int rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
             more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
