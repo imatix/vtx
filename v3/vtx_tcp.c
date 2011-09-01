@@ -866,7 +866,8 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 more = zsockopt_rcvmore (vocket->msgpipe);
             }
         }
-        else {
+        else
+        if (zlist_size (vocket->live_peerings) == 1) {
             //  Send frames straight through to single subscriber
             peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
             while (rc >= 0) {
@@ -877,6 +878,13 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 more = zsockopt_rcvmore (vocket->msgpipe);
             }
         }
+        else
+            //  Drop frames as there is no subscriber
+            while (rc >= 0) {
+                zmq_msg_close (&msg);
+                zmq_msg_init (&msg);
+                rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
+            }
     }
     else
     if (vocket->routing == VTX_ROUTING_SINGLE) {
