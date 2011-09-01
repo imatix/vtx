@@ -754,7 +754,6 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
     int rc = zmq_recvmsg (vocket->msgpipe, &msg, 0);
     if (rc < 0)
         return 0;               //  Interrupted
-    Bool more = zsockopt_rcvmore (vocket->msgpipe);
     vocket->outpiped++;
 
     //  Route message to active peerings as appropriate
@@ -772,13 +771,13 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         zlist_append (vocket->live_peerings, peering);
         //  Send all parts in this message
         while (rc >= 0) {
+            Bool more = zsockopt_rcvmore (vocket->msgpipe);
             s_queue_output (peering, &msg, more);
             if (!more)
                 break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-            more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
     else
@@ -786,13 +785,13 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         peering_t *peering = vocket->reply_to;
         //  Send all parts in this message
         while (rc >= 0) {
+            Bool more = zsockopt_rcvmore (vocket->msgpipe);
             s_queue_output (peering, &msg, more);
             if (!more)
                 break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-            more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
     else
@@ -800,6 +799,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         peering_t *peering = NULL;
         //  Send as many messages as we can get
         while (rc >= 0) {
+            Bool more = zsockopt_rcvmore (vocket->msgpipe);
             //  Round-robin to next peering if required
             if (!peering) {
                 peering = (peering_t *) zlist_pop (vocket->live_peerings);
@@ -811,7 +811,6 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-            more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
     else
@@ -819,6 +818,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         peering_t *peering = NULL;
         //  Send as many messages as we can get
         while (rc >= 0) {
+            Bool more = zsockopt_rcvmore (vocket->msgpipe);
             //  Look-up peering using first message part
             if (!peering) {
                 //  Parse and check schemed identity
@@ -847,7 +847,6 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-            more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
     else
@@ -855,6 +854,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         if (zlist_size (vocket->live_peerings) > 1) {
             //  Duplicate frames to all subscribers
             while (rc >= 0) {
+                Bool more = zsockopt_rcvmore (vocket->msgpipe);
                 peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
                 while (peering) {
                     s_queue_output (peering, &msg, more);
@@ -863,7 +863,6 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 zmq_msg_close (&msg);
                 zmq_msg_init (&msg);
                 rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-                more = zsockopt_rcvmore (vocket->msgpipe);
             }
         }
         else
@@ -871,11 +870,11 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             //  Send frames straight through to single subscriber
             peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
             while (rc >= 0) {
+                Bool more = zsockopt_rcvmore (vocket->msgpipe);
                 s_queue_output (peering, &msg, more);
                 zmq_msg_close (&msg);
                 zmq_msg_init (&msg);
                 rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-                more = zsockopt_rcvmore (vocket->msgpipe);
             }
         }
         else
@@ -890,11 +889,11 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
     if (vocket->routing == VTX_ROUTING_SINGLE) {
         peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
         while (rc >= 0) {
+            Bool more = zsockopt_rcvmore (vocket->msgpipe);
             s_queue_output (peering, &msg, more);
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
-            more = zsockopt_rcvmore (vocket->msgpipe);
         }
     }
     else
