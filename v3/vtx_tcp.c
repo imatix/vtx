@@ -817,7 +817,6 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
     else
     if (vocket->routing == VTX_ROUTING_ROUTER) {
         peering_t *peering = NULL;
-        Bool dropping = FALSE;
         //  Send as many messages as we can get
         while (rc >= 0) {
             //  Look-up peering using first message part
@@ -833,16 +832,14 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 &&  memcmp (address + scheme_size, "://", 3) == 0) {
                     peering = (peering_t *) zhash_lookup (
                         vocket->peering_hash, address + scheme_size + 3);
-                    if (!peering || !peering->alive) {
+                    if (!peering || !peering->alive)
                         zclock_log ("W: no route to '%s' - dropping", address);
-                        dropping = TRUE;
-                    }
                 }
                 else
                     zclock_log ("E: bad address '%s' - dropping", address);
                 free (address);
             }
-            if (!dropping)
+            if (peering && peering->alive)
                 s_queue_output (peering, &msg, more);
             if (!more)
                 peering = NULL;     //  Finished with this peering
