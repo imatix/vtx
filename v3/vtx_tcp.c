@@ -582,6 +582,8 @@ peering_delete (void *argument)
 
     vtx_codec_destroy (&self->input);
     vtx_codec_destroy (&self->output);
+    if (vocket->reply_to == self)
+        vocket->reply_to = NULL;
     peering_lower (self);
     zlist_remove (vocket->peering_list, self);
     zloop_timer_end (driver->loop, self);
@@ -788,7 +790,8 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         //  Send all parts in this message
         while (rc >= 0) {
             Bool more = zsockopt_rcvmore (vocket->msgpipe);
-            s_queue_output (peering, &msg, more);
+            if (peering && peering->alive)
+                s_queue_output (peering, &msg, more);
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
             if (!more)
