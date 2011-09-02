@@ -530,8 +530,10 @@ peering_require (vocket_t *vocket, char *address, Bool outgoing)
             s_peering_monitor (self->driver->loop, NULL, self);
         }
         //  Initialize message buffering codecs
-        self->input = vtx_codec_new (vocket->inbuf_max);
-        self->output = vtx_codec_new (vocket->outbuf_max);
+        if (!self->exception) {
+            self->input = vtx_codec_new (vocket->inbuf_max);
+            self->output = vtx_codec_new (vocket->outbuf_max);
+        }
         //* End transport-specific work
 
         if (self->exception) {
