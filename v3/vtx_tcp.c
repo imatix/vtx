@@ -775,10 +775,10 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         while (rc >= 0) {
             Bool more = zsockopt_rcvmore (vocket->msgpipe);
             s_queue_output (peering, &msg, more);
-            if (!more)
-                break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
+            if (!more)
+                break;              //  Last frame in message
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
         }
     }
@@ -789,10 +789,10 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
         while (rc >= 0) {
             Bool more = zsockopt_rcvmore (vocket->msgpipe);
             s_queue_output (peering, &msg, more);
-            if (!more)
-                break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
+            if (!more)
+                break;              //  Last frame in message
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
         }
     }
@@ -808,10 +808,10 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 zlist_append (vocket->live_peerings, peering);
             }
             s_queue_output (peering, &msg, more);
-            if (!more)
-                break;              //  Last frame in message
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
+            if (!more)
+                break;              //  Last frame in message
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
         }
     }
@@ -843,11 +843,10 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             }
             if (peering && peering->alive)
                 s_queue_output (peering, &msg, more);
-            if (!more)
-                peering = NULL;     //  Finished with this peering
-
             zmq_msg_close (&msg);
             zmq_msg_init (&msg);
+            if (!more)
+                peering = NULL;     //  Finished with this peering
             rc = zmq_recvmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT);
         }
     }
