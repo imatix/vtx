@@ -167,6 +167,7 @@ struct _peering_t {
     vocket_t *vocket;           //  Parent vocket object
     Bool alive;                 //  Is peering raised and alive?
     Bool outgoing;              //  Connected handles?
+    Bool subscribed;            //  Is peering receiving messages (SUB only)
     char *address;              //  Peer address as nnn.nnn.nnn.nnn:nnnnn
     Bool exception;             //  Peering could not be initialized
     vtx_codec_t *input;         //  Input message queue
@@ -583,8 +584,6 @@ peering_delete (void *argument)
 
     vtx_codec_destroy (&self->input);
     vtx_codec_destroy (&self->output);
-    if (vocket->current_peering == self)
-        vocket->current_peering = NULL;
     peering_lower (self);
     zlist_remove (vocket->peering_list, self);
     zloop_timer_end (driver->loop, self);
@@ -638,6 +637,12 @@ peering_lower (peering_t *self)
             zmq_pollitem_t item = { vocket->msgpipe, 0, ZMQ_POLLIN, 0 };
             zloop_poller_end (driver->loop, &item);
         }
+        //  current_peering cannot receive messages any more
+        if (vocket->current_peering == self)
+            vocket->current_peering = NULL;
+        //  Make sure we are not subscribed anymore (makes sense for SUB
+        //  socket only)
+        self->subscribed = FALSE;
     }
 }
 
@@ -761,7 +766,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
     int rc = zmq_recvmsg (vocket->msgpipe, &msg, 0);
     while (rc >= 0) {
         vocket->outpiped++;
-        first = !more;
+        Bool first = !more;
         more = zsockopt_rcvmore (vocket->msgpipe);
 
         //  Route message to active peerings as appropriate
@@ -776,13 +781,13 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 zlist_append (vocket->live_peerings, vocket->current_peering);
             }
             peering_t *peering = vocket->current_peering;
-            if (peering && peering->alive)
+            if (peering)
                 s_queue_output (peering, &msg, more);
         }
         else
         if (vocket->routing == VTX_ROUTING_REPLY) {
             peering_t *peering = vocket->current_peering;
-            if (peering && peering->alive)
+            if (peering)
                 s_queue_output (peering, &msg, more);
         }
         else
@@ -794,7 +799,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 zlist_append (vocket->live_peerings, vocket->current_peering);
             }
             peering_t *peering = vocket->current_peering;
-            if (peering && peering->alive)
+            if (peering)
                 s_queue_output (peering, &msg, more);
         }
         else
@@ -822,16 +827,27 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
                 free (address);
             }
             else
-                if (peering && peering->alive)
+                if (peering)
                     s_queue_output (peering, &msg, more);
         }
         else
         if (vocket->routing == VTX_ROUTING_PUBLISH) {
+            //  This is the first part of possibly multi-part message
+            //  Subscribe all peerings that are alive
+            if (first) {
+                peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
+                while (peering) {
+                    peering->subscribed = TRUE;
+                    peering = (peering_t *) zlist_next (vocket->live_peerings);
+                }
+            }
+
             if (zlist_size (vocket->live_peerings) > 1) {
                 //  Duplicate frames to all subscribers
-                peering_t * peering = (peering_t *) zlist_first (vocket->live_peerings);
+                peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
                 while (peering) {
-                    s_queue_output (peering, &msg, more);
+                    if (peering->subscribed)
+                        s_queue_output (peering, &msg, more);
                     peering = (peering_t *) zlist_next (vocket->live_peerings);
                 }
             }
@@ -839,7 +855,8 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             if (zlist_size (vocket->live_peerings) == 1) {
                 //  Send frames straight through to single subscriber
                 peering_t *peering = (peering_t *) zlist_first (vocket->live_peerings);
-                s_queue_output (peering, &msg, more);
+                if (peering->subscribed)
+                    s_queue_output (peering, &msg, more);
             }
         }
         else
@@ -847,7 +864,7 @@ s_vocket_input (zloop_t *loop, zmq_pollitem_t *item, void *arg)
             if (first)
                 vocket->current_peering = (peering_t *) zlist_first (vocket->live_peerings);
             peering_t *peering = vocket->current_peering;
-            if (peering && peering->alive)
+            if (peering)
                 s_queue_output (peering, &msg, more);
         }
         else
