@@ -172,6 +172,7 @@ struct _peering_t {
     Bool exception;             //  Peering could not be initialized
     vtx_codec_t *input;         //  Input message queue
     vtx_codec_t *output;        //  Output message queue
+    Bool more;                  //  Waiting for more message parts
     //  ZMTP specific properties
     int handle;                 //  Handle for input/output
     int interval;               //  Current reconnect interval
@@ -1109,27 +1110,63 @@ s_recv_wire (peering_t *self)
         int rc = vtx_codec_bin_put (self->input, buffer, size);
         assert (rc == 0);
 
-        //  store binary data into codec
-        //  if routing = request
-        //      retrieve message, if available
-        //      this is a reply
-        //      check reply is allowed in state
-        //      then send message through to msgpipe
-        //      else discard message
-        //      reset state machine on peering
-        //  if routing = reply
-        //      this is a request
-        //      if state allows incoming request
-        //          retrieve message, if available
-        //          vocket->reply_to = peering
-        //          send message through to msgpipe
-        //  if routing = router
-        //      retrieve message, if available
-        //      send schemed identity to msgpipe
-        //      send message through to msgpipe
-        //  any other routing, nomnom allowed
-        //      retrieve message, if available
-        //      send message through to msgpipe
+        Bool first_part = !self->more;
+        Bool more;
+        zmq_msg_t msg;
+        zmq_msg_init (&msg);
+        rc = vtx_codec_msg_get (self->input, &msg, &more);
+        while (rc == 0) {
+            if (vocket->routing == VTX_ROUTING_REQUEST) {
+                //  TODO state check
+                //  TODO Is reply expected to come from thes peering?
+                int flags = ZMQ_DONTWAIT;
+                if (more)
+                    flags |= ZMQ_SNDMORE;
+                zmq_sendmsg (vocket->msgpipe, &msg, flags);
+            }
+            else
+            if (vocket->routing == VTX_ROUTING_REPLY) {
+                //  TODO state check
+                vocket->current_peering = self;
+                int flags = ZMQ_DONTWAIT;
+                if (more)
+                    flags |= ZMQ_SNDMORE;
+                zmq_sendmsg (vocket->msgpipe, &msg, flags);
+            }
+            else
+            if (vocket->routing == VTX_ROUTING_ROUTER) {
+                //  Send peering's ID
+                if (first_part) {
+                    size_t id_size = strlen(driver->scheme)
+                                   + strlen("://")
+                                   + strlen(self->address);
+                    zmq_msg_t msg;
+                    rc = zmq_msg_init_size (&msg, id_size + 1);
+                    assert (rc == 0);
+                    strcpy (zmq_msg_data (&msg), driver->scheme);
+                    strcat (zmq_msg_data (&msg), "://");
+                    strcat (zmq_msg_data (&msg), self->address);
+                    zmq_sendmsg (vocket->msgpipe, &msg, ZMQ_DONTWAIT|ZMQ_SNDMORE);
+                    zmq_msg_close (&msg);
+                }
+                int flags = ZMQ_DONTWAIT;
+                if (more)
+                    flags |= ZMQ_SNDMORE;
+                zmq_sendmsg (vocket->msgpipe, &msg, flags);
+            }
+            else
+            if (vocket->nomnom) {
+                int flags = ZMQ_DONTWAIT;
+                if (more)
+                    flags |= ZMQ_SNDMORE;
+                zmq_sendmsg (vocket->msgpipe, &msg, flags);
+            }
+            zmq_msg_close (&msg);
+            zmq_msg_init (&msg);
+            self->more = more;
+            first_part = !more;
+            rc = vtx_codec_msg_get (self->input, &msg, &more);
+        }
 #if 0
         else
             zclock_log ("W: unexpected message from %s - dropping", address);
